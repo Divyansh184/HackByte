@@ -7,12 +7,13 @@ import autoencoder
 from datetime import datetime
 from sklearn.model_selection import train_test_split
 from io import StringIO
+import os
+import joblib
+import json
+from tensorflow.keras.models import load_model
+import tensorflow.keras.losses
 
 def predict_single_row(model, row, threshold):
-    """
-    Predicts using a single row.
-    The row is expected to be a list of numeric values.
-    """
     row_values = np.array(row).reshape(1, -1)
     prediction = model.predict(row_values)
     reconstruction_error = np.mean(np.square(row_values - prediction), axis=1)
@@ -25,13 +26,10 @@ def predict_single_row(model, row, threshold):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', 
-                        default=r'C:\Users\ABCD\Desktop\HackByte\HackByte\DataFiles\KDD\kddcup.data_10_percent_corrected',
-                        help='Path to the dataset CSV file')
-    parser.add_argument('--output', default='Results.csv')
-    parser.add_argument('--epochs', type=int, default=200)
-    parser.add_argument('--archi', default='U20,D,U15,D,U10,D,U15,D,U20',
-                        help='Architecture string for the autoencoder')
+    parser.add_argument('--data_path', default=r'C:\Users\ABCD\Desktop\HackByte\HackByte\DataFiles\KDD\kddcup.data_10_percent_corrected')
+    parser.add_argument('--logs_path', default=r'C:\Users\ABCD\Desktop\HackByte\HackByte\DataFiles\ourlogs.txt')
+    parser.add_argument('--epochs', type=int, default=300)
+    parser.add_argument('--archi', default='U20,D,U15,D,U10,D,U15,D,U20')
     parser.add_argument('--regu', default='l1l2')
     parser.add_argument('--l1_value', type=float, default=0.0001)
     parser.add_argument('--l2_value', type=float, default=0.0001)
@@ -40,55 +38,41 @@ if __name__ == '__main__':
     parser.add_argument('--model', default='autoencoder')
     parser.add_argument('--loss', default='mse')
     args = parser.parse_args()
-    
-    # --- Load and Preprocess Dataset ---
+
     num_columns = 42
     columns = [f'col{i}' for i in range(num_columns)]
     df = pd.read_csv(args.data_path, header=None, names=columns)
     
-    # Filter for normal activity rows.
     df = df[df['col41'].str.strip().str.lower().str.startswith('normal')]
+    df_numeric = df.drop(columns=['col0', 'col1', 'col2', 'col3', 'col41']).astype(float)
     
-    # Drop non-numeric columns: columns 0,1,2,3 and the class label (column 41).
-    df_numeric = df.drop(columns=['col0', 'col1', 'col2', 'col3', 'col41'])
-    
-    # Convert remaining columns to float.
-    df_numeric = df_numeric.astype(float)
-    
-    # Optionally drop highly correlated columns.
     df_numeric, dropped_cols = preprocess.dataframe_drop_correlated_columns(
         df_numeric, threshold=args.correlation_value, verbose=True)
     print("Dropped columns due to high correlation:", dropped_cols)
-    # Mapping column indices to their actual names
-    kdd_feature_names = [
-        "duration", "protocol_type", "service", "flag", "src_bytes", "dst_bytes", "land", "wrong_fragment",
-        "urgent", "hot", "num_failed_logins", "logged_in", "num_compromised", "root_shell",
-        "su_attempted", "num_root", "num_file_creations", "num_shells", "num_access_files",
-        "num_outbound_cmds", "is_host_login", "is_guest_login", "count", "srv_count", "serror_rate",
-        "srv_serror_rate", "rerror_rate", "srv_rerror_rate", "same_srv_rate", "diff_srv_rate",
-        "srv_diff_host_rate", "dst_host_count", "dst_host_srv_count", "dst_host_same_srv_rate",
-        "dst_host_diff_srv_rate", "dst_host_same_src_port_rate", "dst_host_srv_diff_host_rate",
-        "dst_host_serror_rate", "dst_host_srv_serror_rate", "dst_host_rerror_rate",
-        "dst_host_srv_rerror_rate", "label"
-    ]
 
-    # Extract numeric feature names (col4 to col40)
-    col_to_feature = {f'col{i}': kdd_feature_names[i] for i in range(4, 41)}
-
-    # Get readable names of columns used by the model
-    used_feature_names = [col_to_feature[col] for col in df_numeric.columns]
-    print("Columns used by the model (readable):", used_feature_names)
-
-    # Scale the data.
     standard_scaler = preprocessing.StandardScaler()
     x_scaled = standard_scaler.fit_transform(df_numeric.values)
     df_processed = pd.DataFrame(x_scaled, columns=df_numeric.columns)
     
-    # Split into training and validation sets.
     train_X, valid_X = train_test_split(df_processed, test_size=0.25, random_state=1)
     
-    # --- Train Autoencoder ---
-    if args.model == 'autoencoder':    
+    model_path = 'saved_model.h5'
+    scaler_path = 'scaler.pkl'
+    threshold_path = 'threshold.json'
+
+    if os.path.exists(model_path) and os.path.exists(scaler_path) and os.path.exists(threshold_path):
+        print("Loading saved model, scaler, and threshold...")
+        
+        custom_objects = {'mse': tensorflow.keras.losses.MeanSquaredError()}
+        wrapper_model = load_model(model_path, custom_objects=custom_objects, compile=False)
+        wrapper_model.compile(optimizer='adam', loss='mse')  # Explicitly compile
+
+        standard_scaler = joblib.load(scaler_path)
+        with open(threshold_path) as f:
+            threshold = json.load(f)['threshold']
+    
+    else:
+        print("Training new model...")
         wrapper = autoencoder.Autoencoder(
             num_features=len(df_processed.columns),
             archi=args.archi,
@@ -98,35 +82,47 @@ if __name__ == '__main__':
             dropout=args.dropout,
             loss=args.loss
         )
-        wrapper.model.fit(train_X, train_X, batch_size=1024, epochs=args.epochs,
-                          validation_data=(valid_X, valid_X))
+        wrapper.train(train_X, valid_X, epochs=args.epochs, batch_size=1024)
+
+        # Compute and save threshold
+        normal_predictions = wrapper.model.predict(train_X)
+        reconstruction_errors = np.mean(np.square(train_X - normal_predictions), axis=1)
+        threshold = np.mean(reconstruction_errors) + 3 * np.std(reconstruction_errors)
+
+        # Save model, scaler, and threshold
+        wrapper.model.save(model_path)
+        joblib.dump(standard_scaler, scaler_path)
+        with open(threshold_path, 'w') as f:
+            json.dump({'threshold': threshold}, f)
+
+        wrapper_model = wrapper.model  # Assign trained model
     
-    # --- Compute Threshold ---
-    normal_predictions = wrapper.model.predict(train_X)
-    reconstruction_errors = np.mean(np.square(train_X - normal_predictions), axis=1)
-    threshold = np.mean(reconstruction_errors) + 3 * np.std(reconstruction_errors)
-    print(f"Computed Threshold: {threshold}")
-    
-    # --- Test Single Row Prediction ---
-    # Provided test row (as a CSV string):
-    test_row_str = """0,tcp,smtp,SF,3714,393,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0.00,0.00,0.00,0.00,1.00,0.00,0.00,12,86,0.75,0.17,0.08,0.05,0.00,0.00,0.00,0.00,normal"""
-    
-    # Convert the test row string to a DataFrame.
-    test_df = pd.read_csv(StringIO(test_row_str), header=None, names=columns)
-    
-    # Drop non-numeric columns (same as training).
-    test_df_numeric = test_df.drop(columns=['col0', 'col1', 'col2', 'col3', 'col41'])
-    
-    # Convert to numeric (coerce errors, then fill NaNs with 0).
-    test_df_numeric = test_df_numeric.apply(pd.to_numeric, errors='coerce')
-    test_df_numeric.fillna(0, inplace=True)
-    
-    # Ensure we keep only the columns used during training.
-    test_df_numeric = test_df_numeric[df_numeric.columns]
-    
-    # Scale the test row using the same scaler.
-    test_scaled = standard_scaler.transform(test_df_numeric.values)
-    test_row = test_scaled[0].tolist()
-    
-    result = predict_single_row(wrapper.model, test_row, threshold)
-    print(f"Test row prediction: {result}")
+    logs_path = args.logs_path
+    if os.path.exists(logs_path):
+        print("Processing logs from ourlogs.txt...")
+        with open(logs_path, 'r') as f:
+            for line in f:
+                log_df = pd.read_csv(StringIO(line), header=None, names=columns)
+                log_df_numeric = log_df.drop(columns=['col0', 'col1', 'col2', 'col3', 'col41'])
+                log_df_numeric = log_df_numeric.apply(pd.to_numeric, errors='coerce').fillna(0)
+
+                log_df_numeric = log_df_numeric[df_numeric.columns]
+                log_scaled = standard_scaler.transform(log_df_numeric.values)
+                log_row = log_scaled[0].tolist()
+
+                result = predict_single_row(wrapper_model, log_row, threshold)
+                print(f"Log prediction: {result}")
+    else:
+        print("ourlogs.txt not found. Skipping log predictions.")
+    # # --- Test Single Row Prediction ---
+    # test_row_str = """0.004,tcp,http,SF,1514,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,2,2,0,0.0,0.0,0.0,1.0,0.0,0.0,10,10,1.0,0.0,0.1,0.0,0.0,0.0,0.0,0.0,normal"""
+    # test_df = pd.read_csv(StringIO(test_row_str), header=None, names=columns)
+    # test_df_numeric = test_df.drop(columns=['col0', 'col1', 'col2', 'col3', 'col41'])
+    # test_df_numeric = test_df_numeric.apply(pd.to_numeric, errors='coerce').fillna(0)
+
+    # test_df_numeric = test_df_numeric[df_numeric.columns]
+    # test_scaled = standard_scaler.transform(test_df_numeric.values)
+    # test_row = test_scaled[0].tolist()
+
+    # result = predict_single_row(wrapper_model, test_row, threshold)
+    # print(f"Test row prediction: {result}")
