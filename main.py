@@ -1,6 +1,6 @@
 import argparse
 import pandas as pd
-import helper
+import preprocess
 from sklearn import preprocessing
 import numpy as np
 import autoencoder
@@ -26,10 +26,10 @@ def predict_single_row(model, row, threshold):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path', 
-                        default=r'C:\Users\Anshuman\Desktop\Rishabh\hacka\zero-day-detection\DataFiles\KDD\kddcup.data_10_percent_corrected',
+                        default=r'C:\Users\ABCD\Desktop\HackByte\HackByte\DataFiles\KDD\kddcup.data_10_percent_corrected',
                         help='Path to the dataset CSV file')
     parser.add_argument('--output', default='Results.csv')
-    parser.add_argument('--epochs', type=int, default=50)
+    parser.add_argument('--epochs', type=int, default=200)
     parser.add_argument('--archi', default='U20,D,U15,D,U10,D,U15,D,U20',
                         help='Architecture string for the autoencoder')
     parser.add_argument('--regu', default='l1l2')
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     df_numeric = df_numeric.astype(float)
     
     # Optionally drop highly correlated columns.
-    df_numeric, dropped_cols = helper.dataframe_drop_correlated_columns(
+    df_numeric, dropped_cols = preprocess.dataframe_drop_correlated_columns(
         df_numeric, threshold=args.correlation_value, verbose=True)
     print("Dropped columns due to high correlation:", dropped_cols)
     
