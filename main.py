@@ -59,7 +59,26 @@ if __name__ == '__main__':
     df_numeric, dropped_cols = preprocess.dataframe_drop_correlated_columns(
         df_numeric, threshold=args.correlation_value, verbose=True)
     print("Dropped columns due to high correlation:", dropped_cols)
-    
+    # Mapping column indices to their actual names
+    kdd_feature_names = [
+        "duration", "protocol_type", "service", "flag", "src_bytes", "dst_bytes", "land", "wrong_fragment",
+        "urgent", "hot", "num_failed_logins", "logged_in", "num_compromised", "root_shell",
+        "su_attempted", "num_root", "num_file_creations", "num_shells", "num_access_files",
+        "num_outbound_cmds", "is_host_login", "is_guest_login", "count", "srv_count", "serror_rate",
+        "srv_serror_rate", "rerror_rate", "srv_rerror_rate", "same_srv_rate", "diff_srv_rate",
+        "srv_diff_host_rate", "dst_host_count", "dst_host_srv_count", "dst_host_same_srv_rate",
+        "dst_host_diff_srv_rate", "dst_host_same_src_port_rate", "dst_host_srv_diff_host_rate",
+        "dst_host_serror_rate", "dst_host_srv_serror_rate", "dst_host_rerror_rate",
+        "dst_host_srv_rerror_rate", "label"
+    ]
+
+    # Extract numeric feature names (col4 to col40)
+    col_to_feature = {f'col{i}': kdd_feature_names[i] for i in range(4, 41)}
+
+    # Get readable names of columns used by the model
+    used_feature_names = [col_to_feature[col] for col in df_numeric.columns]
+    print("Columns used by the model (readable):", used_feature_names)
+
     # Scale the data.
     standard_scaler = preprocessing.StandardScaler()
     x_scaled = standard_scaler.fit_transform(df_numeric.values)
