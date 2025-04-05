@@ -1,0 +1,37 @@
+/* File: components/FetchLogsComponent.css */
+.fetch-logs {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.fetch-btn {
+  background: #00c853;
+  border: none;
+  color: #fff;
+  padding: 10px 20px;
+  font-size: 1.1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.fetch-btn:hover {
+  background: #00b140;
+}
+
+.status {
+  margin: 15px 0;
+  font-size: 1rem;
+}
+
+.logs {
+  text-align: left;
+  background: #2c2c2c;
+  padding: 15px;
+  border-radius: 4px;
+  overflow: auto;
+}
