@@ -21,21 +21,32 @@ const ProtocolAndAttackCharts = ({ logs }) => {
 
   logs.forEach((log) => {
     const fields = log.text.split(",");
-    const protocol = fields[2]?.toLowerCase(); // e.g., "tcp"
-    const attackType = fields[0]; // last item
+    // fields: [duration, protocol, service, flag, ...]
+    const protocol = fields[1]?.toLowerCase(); // e.g., "tcp", "icmp", etc.
+    const service = fields[2]?.toLowerCase(); // e.g., "telnet"
+    let attackType = "";
 
-    if (protocol) {
-      protocolCounts[protocol] = (protocolCounts[protocol] || 0) + 1;
+    // Classify based on the provided rules:
+    if (protocol === "icmp") {
+      attackType = "smurf";
+    } else if (protocol === "tcp" && service === "telnet") {
+      attackType = "buffer overflow";
+    } else {
+      attackType = "neptune";
     }
 
-    if (attackType) {
-      attackCounts[attackType] = (attackCounts[attackType] || 0) + 1;
+    // Count attack type frequency.
+    attackCounts[attackType] = (attackCounts[attackType] || 0) + 1;
+
+    // Count protocol frequency.
+    if (protocol) {
+      protocolCounts[protocol] = (protocolCounts[protocol] || 0) + 1;
     }
   });
 
   const attackData = Object.entries(attackCounts)
-    .map(([name, count]) => ({ name: name || "Unknown", count }))
-    .filter((d) => d.count > 0); // Remove empty values
+    .map(([name, count]) => ({ name, count }))
+    .filter((d) => d.count > 0); // Filter out any with zero counts.
 
   const protocolData = Object.entries(protocolCounts)
     .map(([name, value]) => ({ name: name.toUpperCase(), value }))
@@ -48,16 +59,13 @@ const ProtocolAndAttackCharts = ({ logs }) => {
           Attack Type Frequency
         </Typography>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart key={attackData.length} data={attackData}>
+          <BarChart data={attackData}>
             <XAxis dataKey="name" />
             <YAxis />
             <Tooltip />
             <Bar dataKey="count">
               {attackData.map((entry, index) => (
-                <Cell
-                  key={`bar-cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
-                />
+                <Cell key={`bar-cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Bar>
           </BarChart>
@@ -66,10 +74,10 @@ const ProtocolAndAttackCharts = ({ logs }) => {
 
       <Paper sx={{ flex: 1, p: 2, borderRadius: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Protocol Usage (TCP/UDP/HTTP)
+          Protocol Usage (TCP/UDP/ICMP)
         </Typography>
         <ResponsiveContainer width="100%" height={300}>
-          <PieChart key={protocolData.length}>
+          <PieChart>
             <Pie
               data={protocolData}
               dataKey="value"
@@ -80,10 +88,7 @@ const ProtocolAndAttackCharts = ({ logs }) => {
               label
             >
               {protocolData.map((entry, index) => (
-                <Cell
-                  key={`pie-cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
-                />
+                <Cell key={`pie-cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
             <Tooltip />

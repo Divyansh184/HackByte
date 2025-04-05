@@ -33,14 +33,14 @@ const Login = () => {
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <Avatar
               alt="Company Logo"
-              src="/img.png"
-              sx={{ width: 40, height: 40, mr: 2 }}
+              src="/em11.jpg"
+              sx={{ width: 50, height: 50, mr: 2 }}
             />
             <Typography
               variant="h6"
               sx={{ fontWeight: 600, color: "#ffffff", letterSpacing: 1 }}
             >
-              1000101
+              GoI Server
             </Typography>
           </Box>
         </Toolbar>
@@ -48,7 +48,10 @@ const Login = () => {
 
       {/* Login Card */}
       <Container maxWidth="sm" sx={{ mt: 12 }}>
-        <Paper elevation={6} sx={{ padding: 6, borderRadius: 3, backgroundColor: "#FBE9E7" }}>
+        <Paper
+          elevation={6}
+          sx={{ padding: 6, borderRadius: 3, backgroundColor: "#FBE9E7" }}
+        >
           <Typography
             variant="h4"
             align="center"

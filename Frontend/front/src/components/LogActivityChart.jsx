@@ -1,17 +1,16 @@
-// LogActivityChart.js
 import React from "react";
 import {
   LineChart,
   Line,
   XAxis,
   YAxis,
+  CartesianGrid,
   Tooltip,
   Legend,
-  CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
 
-const LogActivityChart = ({ data }) => {
+function LogActivityChart({ data }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={data}>
@@ -20,25 +19,11 @@ const LogActivityChart = ({ data }) => {
         <YAxis allowDecimals={false} />
         <Tooltip />
         <Legend />
-        <Line
-          type="monotone"
-          dataKey="safe"
-          stroke="#4caf50"
-          strokeWidth={2}
-          dot={false}
-          name="Safe Logs"
-        />
-        <Line
-          type="monotone"
-          dataKey="suspicious"
-          stroke="#f44336"
-          strokeWidth={2}
-          dot={false}
-          name="Suspicious Logs"
-        />
+        <Line type="monotone" dataKey="safe" stroke="#4CAF50" />
+        <Line type="monotone" dataKey="suspicious" stroke="#F44336" />
       </LineChart>
     </ResponsiveContainer>
   );
-};
+}
 
 export default LogActivityChart;
