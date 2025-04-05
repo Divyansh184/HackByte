@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { Box, Typography, Paper } from "@mui/material";
 
-const COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#8dd1e1"];
+const COLORS = ["#0A2647", "#144272", "#205295", "#2C74B3"];
 
 const ProtocolAndAttackCharts = ({ logs }) => {
   const protocolCounts = {};
@@ -22,7 +22,7 @@ const ProtocolAndAttackCharts = ({ logs }) => {
   logs.forEach((log) => {
     const fields = log.text.split(",");
     const protocol = fields[1]?.toLowerCase(); // e.g., "tcp"
-    const attackType = fields[fields.length - 1]?.toLowerCase(); // last item
+    const attackType = fields[0]; // last item
 
     if (protocol) {
       protocolCounts[protocol] = (protocolCounts[protocol] || 0) + 1;
@@ -32,9 +32,6 @@ const ProtocolAndAttackCharts = ({ logs }) => {
       attackCounts[attackType] = (attackCounts[attackType] || 0) + 1;
     }
   });
-
-  console.log("Attack Types:", attackCounts);
-  console.log("Protocols:", protocolCounts);
 
   const attackData = Object.entries(attackCounts)
     .map(([name, count]) => ({ name: name || "Unknown", count }))
@@ -55,7 +52,14 @@ const ProtocolAndAttackCharts = ({ logs }) => {
             <XAxis dataKey="name" />
             <YAxis />
             <Tooltip />
-            <Bar dataKey="count" fill="#8884d8" />
+            <Bar dataKey="count">
+              {attackData.map((entry, index) => (
+                <Cell
+                  key={`bar-cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </Paper>
@@ -77,7 +81,7 @@ const ProtocolAndAttackCharts = ({ logs }) => {
             >
               {protocolData.map((entry, index) => (
                 <Cell
-                  key={`cell-${index}`}
+                  key={`pie-cell-${index}`}
                   fill={COLORS[index % COLORS.length]}
                 />
               ))}

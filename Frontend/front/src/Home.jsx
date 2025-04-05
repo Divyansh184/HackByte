@@ -33,13 +33,21 @@ function Home() {
     navigate("/login");
   };
 
-  const generateMockLog = () => ({
-    id: Date.now() + Math.random(),
-    text: `${(Math.random() * 0.1).toFixed(3)},tcp,http,SF,${Math.floor(
-      Math.random() * 2000
-    )},0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,2,2,0,0.0,0.0,0.0,1.0,0.0,0.0,10,10,1.0,0.0,0.1,0.0,0.0,0.0,0.0,0.0`,
-    status: "pending",
-  });
+  const generateMockLog = () => {
+    const protocols = ["tcp", "udp", "https"];
+    const randomProtocol =
+      protocols[Math.floor(Math.random() * protocols.length)];
+
+    return {
+      id: Date.now() + Math.random(),
+      text: `${(Math.random() * 0.1).toFixed(
+        3
+      )},${randomProtocol},http,SF,${Math.floor(
+        Math.random() * 2000
+      )},0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,2,2,0,0.0,0.0,0.0,1.0,0.0,0.0,10,10,1.0,0.0,0.1,0.0,0.0,0.0,0.0,0.0`,
+      status: "pending",
+    };
+  };
 
   useEffect(() => {
     let interval;
