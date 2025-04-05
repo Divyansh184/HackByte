@@ -1,6 +1,10 @@
 import pyshark
 import time
+import redis
 from collections import deque
+
+# Redis connection setup
+r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 log_file = "pyshark_network_log.txt"
 seen_streams = {}
@@ -108,13 +112,16 @@ def extract_features(pkt):
 
 
 def write_log(feature_dict):
-    row = []
-    for feat in all_fields:
-        row.append(str(feature_dict.get(feat, 0)))
+    # Write to text log
+    row = [str(feature_dict.get(feat, 0)) for feat in all_fields]
     with open(log_file, "a") as f:
         f.write(",".join(row) + "\n")
 
+    # Write to Redis stream with maxlen cap
+    r.xadd("network_logs", feature_dict, maxlen=10, approximate=True)
 
+
+# Start live capture
 capture = pyshark.LiveCapture(interface='Wi-Fi')
 for packet in capture.sniff_continuously():
     feats = extract_features(packet)
