@@ -32,31 +32,33 @@ function Home() {
     navigate("/login");
   };
 
-  const generateMockLog = () => {
-    const protocols = ["tcp", "udp", "https"];
-    const randomProtocol =
-      protocols[Math.floor(Math.random() * protocols.length)];
-    return {
-      id: Date.now() + Math.random(),
-      text: `${(Math.random() * 0.1).toFixed(
-        3
-      )},${randomProtocol},http,SF,${Math.floor(
-        Math.random() * 2000
-      )},0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,2,2,0,0.0,0.0,0.0,1.0,0.0,0.0,10,10,1.0,0.0,0.1,0.0,0.0,0.0,0.0,0.0`,
-      status: "pending",
-    };
+  const generateMockLog = async () => {
+    try {
+      const response = await fetch("http://localhost:3001/log");
+      const data = await response.json();
+      return {
+        id: Date.now(),
+        text: data.log,
+        status: "pending",
+      };
+    } catch (error) {
+      console.error("Failed to fetch log:", error);
+      return {
+        id: Date.now(),
+        text: "Error fetching log",
+        status: "error",
+      };
+    }
   };
 
   useEffect(() => {
     let interval;
     if (isToggled && liveLogs.length < 3) {
-      interval = setInterval(() => {
-        setLiveLogs((prev) => {
-          if (prev.length < 3) {
-            return [...prev, generateMockLog()];
-          }
-          return prev;
-        });
+      interval = setInterval(async () => {
+        if (liveLogs.length < 3) {
+          const newLog = await generateMockLog();
+          setLiveLogs((prev) => [...prev, newLog]);
+        }
       }, 1000);
     }
     return () => clearInterval(interval);
@@ -70,7 +72,11 @@ function Home() {
       liveLogs[0].status === "pending"
     ) {
       const currentLog = liveLogs[0];
-      const isSafe = Math.random() > 0.5;
+
+      // 👇 Deterministic classification based on first letter
+      const firstLetter = currentLog.text.trim()[0]?.toUpperCase();
+      const isSafe = firstLetter === "N";
+
       const updatedLog = {
         ...currentLog,
         status: isSafe ? "safe" : "suspicious",
@@ -96,10 +102,8 @@ function Home() {
         });
 
         if (isSafe) {
-          // Keep only the last 10 safe logs
           setSafeLogs((prev) => [...prev, updatedLog].slice(-10));
         } else {
-          // Append all suspicious logs without slicing
           setSuspiciousLogs((prev) => [...prev, updatedLog]);
         }
 
@@ -107,6 +111,7 @@ function Home() {
       }, 1000);
     }
   }, [liveLogs, isToggled, isProcessing]);
+
 
   const getLogColor = (status) => {
     switch (status) {
@@ -316,7 +321,7 @@ function Home() {
                 ) : (
                   safeLogs.map((log) => (
                     <Typography key={log.id} sx={{ fontSize: "0.75rem", fontFamily: "monospace" }}>
-                      {log.text}
+                      {log.text.slice(3)}
                     </Typography>
                   ))
                 )}
@@ -356,7 +361,7 @@ function Home() {
                 ) : (
                   suspiciousLogs.map((log) => (
                     <Typography key={log.id} sx={{ fontSize: "0.75rem", fontFamily: "monospace" }}>
-                      {log.text}
+                      {log.text.slice(3)}
                     </Typography>
                   ))
                 )}

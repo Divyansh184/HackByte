@@ -21,7 +21,7 @@ const ProtocolAndAttackCharts = ({ logs }) => {
 
   logs.forEach((log) => {
     const fields = log.text.split(",");
-    const protocol = fields[1]?.toLowerCase(); // e.g., "tcp"
+    const protocol = fields[2]?.toLowerCase(); // e.g., "tcp"
     const attackType = fields[0]; // last item
 
     if (protocol) {

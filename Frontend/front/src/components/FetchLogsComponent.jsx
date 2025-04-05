@@ -9,16 +9,17 @@ const FetchLogsComponent = () => {
   const handleFetchLogs = async () => {
     setStatus("Fetching logs securely...");
     try {
-      // Replace with your real endpoint
       const response = await fetch("/api/fetch-logs");
       const data = await response.json();
-      setLogs(data.logs);
+      // Skip first 3 characters of each log entry
+      setLogs(data.logs.map(log => log.substring(3)));
       setStatus("Logs fetched successfully.");
     } catch (error) {
       console.error(error);
       setStatus("Error fetching logs.");
     }
   };
+
 
   return (
     <Paper elevation={3} sx={{ p: 3 }}>

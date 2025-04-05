@@ -23,7 +23,7 @@ def predict_single_row(model, row, threshold):
     print(f"Threshold: {threshold}")
 
     is_suspicious = reconstruction_error >= threshold
-    return "Suspicious Activity Detected" if is_suspicious else "Normal Activity"
+    return "S" if is_suspicious else "N"
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -102,14 +102,28 @@ if __name__ == '__main__':
 
     r = redis.Redis(host='localhost', port=6379, decode_responses=True)
     last_id = '$'
+    # KDD features (same order used when writing to Redis)
+    all_fields = [
+        "duration", "protocol_type", "service", "flag", "src_bytes", "dst_bytes", "land", "wrong_fragment",
+        "urgent", "hot", "num_failed_logins", "logged_in", "num_compromised", "root_shell",
+        "su_attempted", "num_root", "num_file_creations", "num_shells", "num_access_files",
+        "num_outbound_cmds", "is_host_login", "is_guest_login", "count", "srv_count", "serror_rate",
+        "srv_serror_rate", "rerror_rate", "srv_rerror_rate", "same_srv_rate", "diff_srv_rate",
+        "srv_diff_host_rate", "dst_host_count", "dst_host_srv_count", "dst_host_same_srv_rate",
+        "dst_host_diff_srv_rate", "dst_host_same_src_port_rate", "dst_host_srv_diff_host_rate",
+        "dst_host_serror_rate", "dst_host_srv_serror_rate", "dst_host_rerror_rate",
+        "dst_host_srv_rerror_rate"
+    ]
+
 
     while True:
-        response = r.xread({'network_logs': last_id}, count=5, block=10)
+        response = r.xread({'network_logs': last_id}, count=1, block=1)
         for stream, messages in response:
             for entry_id, data in messages:
                 last_id = entry_id
 
-                line = ','.join([data.get(col, '0') for col in columns])
+                line = ','.join([data.get(feat, '0') for feat in all_fields])
+                print(line);
                 log_df = pd.read_csv(StringIO(line), header=None, names=columns)
                 log_df_numeric = log_df.drop(columns=['col0', 'col1', 'col2', 'col3', 'col41'])
                 log_df_numeric = log_df_numeric.apply(pd.to_numeric, errors='coerce').fillna(0)
@@ -121,8 +135,10 @@ if __name__ == '__main__':
                 result = predict_single_row(wrapper_model, log_row, threshold)
 
                 # Save in format: label, full_log_string
-                with open("classified_results.txt", "a") as output_file:
+                # Efficient overwrite: keeps only the latest log entry
+                with open("classified_results.txt", "w") as output_file:
                     output_file.write(f"{result}, {line}\n")
+
 
 # ----------- REDIS STREAM LOGIC ENDS HERE -----------
 

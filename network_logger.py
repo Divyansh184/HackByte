@@ -118,12 +118,18 @@ def write_log(feature_dict):
         f.write(",".join(row) + "\n")
 
     # Write to Redis stream with maxlen cap
-    r.xadd("network_logs", feature_dict, maxlen=10, approximate=True)
+    r.xadd("network_logs", feature_dict, maxlen=1, approximate=True)
 
 
 # Start live capture
 capture = pyshark.LiveCapture(interface='Wi-Fi')
+last_time = 0
+
 for packet in capture.sniff_continuously():
-    feats = extract_features(packet)
-    if feats:
-        write_log(feats)
+    now = time.time()
+    if now - last_time >= 0.5:  # 500ms = 0.5 seconds
+        feats = extract_features(packet)
+        if feats:
+            write_log(feats)
+        last_time = now
+
