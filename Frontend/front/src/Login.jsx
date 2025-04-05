@@ -9,6 +9,7 @@ import {
   TextField,
   Button,
   Box,
+  Paper,
 } from "@mui/material";
 
 const Login = () => {
@@ -26,53 +27,83 @@ const Login = () => {
 
   return (
     <>
-      {/* Navbar with left-aligned logo and name */}
-      <AppBar position="static" sx={{ backgroundColor: "#003366" }}>
+      {/* Navbar */}
+      <AppBar position="static" sx={{ backgroundColor: "#4E342E" }}>
         <Toolbar>
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <Avatar
               alt="Company Logo"
-              src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Seal_of_UIDAI.svg/2048px-Seal_of_UIDAI.svg.png"
+              src="/img.png"
               sx={{ width: 40, height: 40, mr: 2 }}
             />
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              Network Shield
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 600, color: "#ffffff", letterSpacing: 1 }}
+            >
+              1000101
             </Typography>
           </Box>
         </Toolbar>
       </AppBar>
 
-      {/* Login Form */}
-      <Container maxWidth="xs" sx={{ mt: 10, textAlign: "center" }}>
-        <Typography variant="h4" gutterBottom>
-          Login
-        </Typography>
-        <TextField
-          fullWidth
-          margin="normal"
-          label="Username"
-          variant="outlined"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-        <TextField
-          fullWidth
-          margin="normal"
-          label="Password"
-          type="password"
-          variant="outlined"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <Button
-          variant="contained"
-          color="primary"
-          fullWidth
-          sx={{ mt: 2 }}
-          onClick={handleLogin}
-        >
-          Login
-        </Button>
+      {/* Login Card */}
+      <Container maxWidth="sm" sx={{ mt: 12 }}>
+        <Paper elevation={6} sx={{ padding: 6, borderRadius: 3, backgroundColor: "#FBE9E7" }}>
+          <Typography
+            variant="h4"
+            align="center"
+            gutterBottom
+            sx={{ fontWeight: "bold", color: "#5D4037" }}
+          >
+            Admin Login
+          </Typography>
+
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Username"
+            variant="outlined"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                backgroundColor: "#fff",
+              },
+            }}
+          />
+
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Password"
+            type="password"
+            variant="outlined"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                backgroundColor: "#fff",
+              },
+            }}
+          />
+
+          <Button
+            variant="contained"
+            fullWidth
+            sx={{
+              mt: 3,
+              backgroundColor: "#6D4C41",
+              "&:hover": {
+                backgroundColor: "#5D4037",
+              },
+              fontWeight: "bold",
+              letterSpacing: 0.5,
+            }}
+            onClick={handleLogin}
+          >
+            Login
+          </Button>
+        </Paper>
       </Container>
     </>
   );

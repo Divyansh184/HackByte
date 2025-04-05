@@ -1,405 +1,469 @@
-import React, { useEffect, useState } from "react";
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Box,
-  Button,
-  Avatar,
-  Switch,
-  Card,
-  CardContent,
-  Divider,
-} from "@mui/material";
-import HistoryIcon from "@mui/icons-material/History";
-import LogoutIcon from "@mui/icons-material/Logout";
-import LogActivityChart from "./components/LogActivityChart";
-import ProtocolAndAttackCharts from "./components/ProtocolAndAttackCharts";
-import { useNavigate } from "react-router-dom";
+  import React, { useEffect, useState, useRef } from "react";
+  import {
+    AppBar,
+    Toolbar,
+    Typography,
+    Box,
+    Button,
+    Avatar,
+    Switch,
+    Card,
+    CardContent,
+    Divider,
+  } from "@mui/material";
+  import HistoryIcon from "@mui/icons-material/History";
+  import LogoutIcon from "@mui/icons-material/Logout";
+  import LogActivityChart from "./components/LogActivityChart";
+  import ProtocolAndAttackCharts from "./components/ProtocolAndAttackCharts";
+  import { useNavigate } from "react-router-dom";
 
-function Home() {
-  const [isToggled, setIsToggled] = useState(false);
-  const [liveLogs, setLiveLogs] = useState([]);
-  const [safeLogs, setSafeLogs] = useState([]);
-  const [suspiciousLogs, setSuspiciousLogs] = useState([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [chartData, setChartData] = useState([]);
+  function Home() {
+    const [isToggled, setIsToggled] = useState(false);
+    const [liveLogs, setLiveLogs] = useState([]);
+    const [safeLogs, setSafeLogs] = useState([]);
+    const [suspiciousLogs, setSuspiciousLogs] = useState([]);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [chartData, setChartData] = useState([]);
+    const [isSuspiciousSimulationRunning, setIsSuspiciousSimulationRunning] = useState(false);
 
-  const navigate = useNavigate();
+    const navigate = useNavigate();
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    navigate("/login");
-  };
+    // Ref to store timeout IDs for hardcoded logs processing
+    const suspiciousTimeouts = useRef([]);
 
-  const generateMockLog = async () => {
-    try {
-      const response = await fetch("http://localhost:3001/log");
-      const data = await response.json();
-      return {
-        id: Date.now(),
-        text: data.log,
-        status: "pending",
-      };
-    } catch (error) {
-      console.error("Failed to fetch log:", error);
-      return {
-        id: Date.now(),
-        text: "Error fetching log",
-        status: "error",
-      };
-    }
-  };
+    const handleLogout = () => {
+      localStorage.removeItem("user");
+      navigate("/login");
+    };
 
-  useEffect(() => {
-    let interval;
-    if (isToggled && liveLogs.length < 3) {
-      interval = setInterval(async () => {
-        if (liveLogs.length < 3) {
-          const newLog = await generateMockLog();
-          setLiveLogs((prev) => [...prev, newLog]);
-        }
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isToggled, liveLogs]);
+    const generateMockLog = async () => {
+      try {
+        const response = await fetch("http://localhost:3001/log");
+        const data = await response.json();
+        return {
+          id: Date.now(),
+          text: data.log,
+          status: "pending",
+        };
+      } catch (error) {
+        console.error("Failed to fetch log:", error);
+        return {
+          id: Date.now(),
+          text: "Error fetching log",
+          status: "error",
+        };
+      }
+    };
 
-  useEffect(() => {
-    if (
-      isToggled &&
-      !isProcessing &&
-      liveLogs.length > 0 &&
-      liveLogs[0].status === "pending"
-    ) {
-      const currentLog = liveLogs[0];
+    // Modified function to toggle the simulation of hardcoded suspicious logs.
+    // When active, pressing the button cancels the simulation and clears the live logs.
+    const loadHardcodedSuspiciousLogs = () => {
+      if (isSuspiciousSimulationRunning) {
+        // Stop the simulation: clear all timeouts and clear live logs.
+        suspiciousTimeouts.current.forEach((timeoutId) => clearTimeout(timeoutId));
+        suspiciousTimeouts.current = [];
+        setLiveLogs([]); // Clear live logs so the default message appears.
+        setIsSuspiciousSimulationRunning(false);
+        return;
+      }
 
-      // 👇 Deterministic classification based on first letter
-      const firstLetter = currentLog.text.trim()[0]?.toUpperCase();
-      const isSafe = firstLetter === "N";
+      // Otherwise, start the simulation.
+      setIsSuspiciousSimulationRunning(true);
+      const hardcodedLogs = [
+        { id: 101, text: "0,icmp,ecr_i,SF,1032,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,316,316,0.00,0.00,0.00,0", status: "suspicious" },
+        { id: 102, text: "25,tcp,telnet,SF,269,2333,0,0,0,0,0,1,0,1,0,2,2,1,0,0,0,0,1,1,0.00,0.00,0.00,0", status: "suspicious" },
+        { id: 103, text: "0,icmp,ecr_i,SF,1032,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,511,511,0.00,0.00,0.00", status: "suspicious" },
+        { id: 104, text: "0,udp,private,SF,28,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,13,0.00,0.00,0.00,0.00", status: "suspicious" },
+        { id: 105, text: "0,tcp,telnet,RSTO,126,179,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0.00,0.00,1.00,1", status: "suspicious" },
+        { id: 106, text: "1,tcp,rje,RSTR,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,128,2,0.00,0.00,1.00,1.00,0.02,0", status: "suspicious" },
+        { id: 107, text: "134,tcp,login,SF,100,39445,0,0,2,0,0,1,1,0,0,1,0,0,1,0,0,0,1,1,0.00,0.00,0.00", status: "suspicious" },
+        { id: 108, text: "0,icmp,ecr_i,SF,1032,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,511,511,0.00,0.00,0.00,0", status: "suspicious" },
+        { id: 109, text: "0,tcp,private,S0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,282,17,1.00,1.00,0.00,", status: "suspicious" },
+        { id: 110, text: "0,icmp,ecr_i,SF,1032,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,511,511,0.00,0.00,0.00", status: "suspicious" },
+        { id: 111, text: "0,icmp,ecr_i,SF,520,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,503,503,0.00,0.00,0.00,0.", status: "suspicious" },
+        { id: 112, text: "0,tcp,private,REJ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,117,3,0.00,0.00,1.00,1.00,0.0", status: "suspicious" },
+      ];
 
-      const updatedLog = {
-        ...currentLog,
-        status: isSafe ? "safe" : "suspicious",
-      };
+      hardcodedLogs.forEach((log, index) => {
+        // Schedule each log to appear in the live logs area
+        const t1 = setTimeout(() => {
+          setLiveLogs((prev) => [...prev, log]);
+          const t2 = setTimeout(() => {
+            // Remove from live logs and add to suspicious logs after 1 second
+            setLiveLogs((prev) => prev.filter((l) => l.id !== log.id));
+            setSuspiciousLogs((prev) => [...prev, log]);
+          }, 1000);
+          suspiciousTimeouts.current.push(t2);
+        }, index * 1500); // Stagger each log's appearance by 1.5 seconds
+        suspiciousTimeouts.current.push(t1);
+      });
+    };
 
-      setIsProcessing(true);
-      setLiveLogs((prev) =>
-        prev.map((log, i) => (i === 0 ? updatedLog : log))
-      );
+    useEffect(() => {
+      let interval;
+      if (isToggled && liveLogs.length < 3) {
+        interval = setInterval(async () => {
+          if (liveLogs.length < 3) {
+            const newLog = await generateMockLog();
+            setLiveLogs((prev) => [...prev, newLog]);
+          }
+        }, 1000);
+      }
+      return () => clearInterval(interval);
+    }, [isToggled, liveLogs]);
 
-      setTimeout(() => {
-        setLiveLogs((prev) => prev.slice(1));
+    useEffect(() => {
+      if (
+        isToggled &&
+        !isProcessing &&
+        liveLogs.length > 0 &&
+        liveLogs[0].status === "pending"
+      ) {
+        const currentLog = liveLogs[0];
+        // Deterministic classification based on first letter
+        const firstLetter = currentLog.text.trim()[0]?.toUpperCase();
+        const isSafe = firstLetter === "N";
 
-        const timeLabel = new Date().toLocaleTimeString();
-        setChartData((prev) => {
-          const last = prev[prev.length - 1] || { safe: 0, suspicious: 0 };
-          const newData = {
-            time: timeLabel,
-            safe: isSafe ? last.safe + 1 : last.safe,
-            suspicious: isSafe ? last.suspicious : last.suspicious + 1,
-          };
-          return [...prev.slice(-9), newData];
-        });
+        const updatedLog = {
+          ...currentLog,
+          status: isSafe ? "safe" : "suspicious",
+        };
 
-        if (isSafe) {
-          setSafeLogs((prev) => [...prev, updatedLog].slice(-10));
-        } else {
-          setSuspiciousLogs((prev) => [...prev, updatedLog]);
-        }
+        setIsProcessing(true);
+        setLiveLogs((prev) =>
+          prev.map((log, i) => (i === 0 ? updatedLog : log))
+        );
 
-        setIsProcessing(false);
-      }, 1000);
-    }
-  }, [liveLogs, isToggled, isProcessing]);
+        setTimeout(() => {
+          setLiveLogs((prev) => prev.slice(1));
 
+          const timeLabel = new Date().toLocaleTimeString();
+          setChartData((prev) => {
+            const last = prev[prev.length - 1] || { safe: 0, suspicious: 0 };
+            const newData = {
+              time: timeLabel,
+              safe: isSafe ? last.safe + 1 : last.safe,
+              suspicious: isSafe ? last.suspicious : last.suspicious + 1,
+            };
+            return [...prev.slice(-9), newData];
+          });
 
-  const getLogColor = (status) => {
-    switch (status) {
-      case "safe":
-        return "#d4f4d7";
-      case "suspicious":
-        return "#fcdcdc";
-      default:
-        return "#f4f4f4";
-    }
-  };
+          if (isSafe) {
+            setSafeLogs((prev) => [...prev, updatedLog].slice(-10));
+          } else {
+            setSuspiciousLogs((prev) => [...prev, updatedLog]);
+          }
 
-  return (
-    <>
-      {/* NAVBAR */}
-      <AppBar position="fixed" sx={{ backgroundColor: "#5D4037", zIndex: 1300 }}>
-        <Toolbar sx={{ justifyContent: "space-between" }}>
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Avatar
-              alt="Company Logo"
-              src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Seal_of_UIDAI.svg/2048px-Seal_of_UIDAI.svg.png"
-              sx={{ width: 40, height: 40, mr: 2 }}
-            />
-            <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: "Roboto, sans-serif" }}>
-              Network Shield
-            </Typography>
+          setIsProcessing(false);
+        }, 1000);
+      }
+    }, [liveLogs, isToggled, isProcessing]);
+
+    const getLogColor = (status) => {
+      switch (status) {
+        case "safe":
+          return "#d4f4d7";
+        case "suspicious":
+          return "#fcdcdc";
+        default:
+          return "#f4f4f4";
+      }
+    };
+
+    return (
+      <>
+        {/* NAVBAR */}
+        <AppBar position="fixed" sx={{ backgroundColor: "#5D4037", zIndex: 1300 }}>
+          <Toolbar sx={{ justifyContent: "space-between" }}>
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Avatar
+                alt="Company Logo"
+                src="/img.png"
+                sx={{ width: 40, height: 40, mr: 2 }}
+              />
+              <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: "Roboto, sans-serif" }}>
+                1000101
+              </Typography>
+            </Box>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <Button color="inherit" startIcon={<HistoryIcon />}>
+                Report History
+              </Button>
+              <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>
+                Logout
+              </Button>
+              <Typography variant="body1" sx={{ fontFamily: "Roboto, sans-serif" }}>
+                Hello, User
+              </Typography>
+            </Box>
+          </Toolbar>
+        </AppBar>
+
+        {/* BODY */}
+        <Box sx={{ p: 4, mt: 5, backgroundColor: "#F5EBDD", minHeight: "100vh" }}>
+          {/* TOP SECTION: Left Control Card & Live Log Analysis */}
+          <Box sx={{ display: "flex", gap: 3, mb: 4 }}>
+            {/* Left Control Card */}
+            <Card
+              elevation={3}
+              sx={{
+                border: "2px solid #5D4037",
+                borderRadius: 3,
+                p: 3,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "200px",
+                height: "200px",
+              }}
+            >
+              <Typography
+                variant="h6"
+                sx={{
+                  textAlign: "center",
+                  fontWeight: 600,
+                  mb: 2,
+                  fontFamily: "Roboto, sans-serif",
+                  color: "#A1887F",
+                }}
+              >
+                Start Network Log Analysis
+              </Typography>
+              <Switch
+                checked={isToggled}
+                onChange={() => {
+                  setLiveLogs([]);
+                  setIsToggled(!isToggled);
+                }}
+                color="primary"
+              />
+            </Card>
+
+            {/* Live Log Analysis Card */}
+            <Card
+              sx={{
+                flex: 1,
+                minWidth: "300px",
+                border: "2px solid #5D4037",
+                borderRadius: 3,
+                backgroundColor: "#fff",
+                boxShadow: 4,
+                p: 3,
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  mb: 2,
+                }}
+              >
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontFamily: "Roboto, sans-serif",
+                    color: "#5D4037",
+                    fontWeight: 600,
+                  }}
+                >
+                  Live Log Analysis
+                </Typography>
+                <Box sx={{ display: "flex", gap: 2 }}>
+                  <Button
+                    variant="contained"
+                    onClick={() => {
+                      const blob = new Blob(
+                        [suspiciousLogs.map((log) => log.text).join("\n")],
+                        { type: "text/plain;charset=utf-8" }
+                      );
+                      const link = document.createElement("a");
+                      link.href = URL.createObjectURL(blob);
+                      link.download = "suspicious_logs_report.txt";
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    sx={{
+                      height: "40px",
+                      fontSize: "0.9rem",
+                      fontFamily: "Roboto, sans-serif",
+                      fontWeight: 600,
+                      borderRadius: "8px",
+                      textTransform: "none",
+                      backgroundColor: "#5D4037",
+                      "&:hover": { backgroundColor: "#4E342E" },
+                    }}
+                  >
+                    Generate Report
+                  </Button>
+                  <Button
+                    variant="contained"
+                    onClick={loadHardcodedSuspiciousLogs}
+                    sx={{
+                      height: "40px",
+                      fontSize: "0.9rem",
+                      fontFamily: "Roboto, sans-serif",
+                      fontWeight: 600,
+                      borderRadius: "8px",
+                      textTransform: "none",
+                      backgroundColor: "#5D4037",
+                      "&:hover": { backgroundColor: "#4E342E" },
+                    }}
+                  >
+                    Suspicious Logs
+                  </Button>
+                </Box>
+              </Box>
+              <Divider sx={{ mb: 2 }} />
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
+                  minHeight: "75px",
+                  maxHeight: "75px",
+                  justifyContent: "center",
+                }}
+              >
+                {liveLogs.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "Roboto, sans-serif" }}>
+                    No logs currently being analyzed.
+                  </Typography>
+                ) : (
+                  liveLogs.map((log) => (
+                    <Box
+                      key={log.id}
+                      sx={{
+                        backgroundColor: getLogColor(log.status),
+                        p: 1,
+                        borderRadius: 2,
+                        fontSize: "0.75rem",
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      {log.text}
+                    </Box>
+                  ))
+                )}
+              </Box>
+            </Card>
           </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Button color="inherit" startIcon={<HistoryIcon />}>
-              Report History
-            </Button>
-            <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>
-              Logout
-            </Button>
-            <Typography variant="body1" sx={{ fontFamily: "Roboto, sans-serif" }}>
-              Hello, User
-            </Typography>
-          </Box>
-        </Toolbar>
-      </AppBar>
 
-      {/* BODY */}
-      <Box sx={{ p: 4, mt: 10, backgroundColor: "#F5EBDD", minHeight: "100vh" }}>
-        {/* TOP SECTION: Left Control Card & Live Log Analysis */}
-        <Box sx={{ display: "flex", gap: 3, mb: 4 }}>
-          {/* Left Control Card */}
+          {/* SAFE & SUSPICIOUS LOGS */}
+          <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", mb: 4 }}>
+            <Card
+              sx={{
+                flex: 1,
+                minWidth: "300px",
+                maxHeight: "300px",
+                minHeight: "300px",
+                overflow: "auto",
+                borderRadius: 3,
+                backgroundColor: "#e6ffe6",
+                boxShadow: 2,
+              }}
+            >
+              <CardContent>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: "green",
+                    fontFamily: "Roboto, sans-serif",
+                    fontWeight: 600,
+                  }}
+                >
+                  Safe Logs
+                </Typography>
+                <Divider sx={{ my: 1 }} />
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                  {safeLogs.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "Roboto, sans-serif" }}>
+                      No safe logs.
+                    </Typography>
+                  ) : (
+                    safeLogs.map((log) => (
+                      <Typography key={log.id} sx={{ fontSize: "0.75rem", fontFamily: "monospace" }}>
+                        {log.text.slice(3)}
+                      </Typography>
+                    ))
+                  )}
+                </Box>
+              </CardContent>
+            </Card>
+
+            <Card
+              sx={{
+                flex: 1,
+                minWidth: "300px",
+                maxHeight: "300px",
+                minHeight: "300px",
+                overflow: "auto",
+                borderRadius: 3,
+                backgroundColor: "#ffe6e6",
+                boxShadow: 2,
+              }}
+            >
+              <CardContent>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: "red",
+                    fontFamily: "Roboto, sans-serif",
+                    fontWeight: 600,
+                  }}
+                >
+                  Suspicious Logs
+                </Typography>
+                <Divider sx={{ my: 1 }} />
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                  {suspiciousLogs.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "Roboto, sans-serif" }}>
+                      No suspicious logs.
+                    </Typography>
+                  ) : (
+                    suspiciousLogs.map((log) => (
+                      <Typography key={log.id} sx={{ fontSize: "0.75rem", fontFamily: "monospace" }}>
+                        {log.text}
+                      </Typography>
+                    ))
+                  )}
+                </Box>
+              </CardContent>
+            </Card>
+          </Box>
+
+          {/* CHART */}
           <Card
-            elevation={3}
             sx={{
-              border: "2px solid #5D4037",
+              width: "100%",
+              mt: 4,
+              p: 2,
               borderRadius: 3,
-              p: 3,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "200px",
-              height: "200px",
+              backgroundColor: "#fff",
+              boxShadow: 4,
             }}
           >
             <Typography
               variant="h6"
               sx={{
-                textAlign: "center",
-                fontWeight: 600,
                 mb: 2,
                 fontFamily: "Roboto, sans-serif",
-                color: "#A1887F",
+                color: "#5D4037",
+                fontWeight: 600,
               }}
             >
-              Start Network Log Analysis
+              Log Activity Over Time
             </Typography>
-            <Switch
-              checked={isToggled}
-              onChange={() => {
-                setLiveLogs([]);
-                setIsToggled(!isToggled);
-              }}
-              color="primary"
-            />
+            <LogActivityChart data={chartData} />
           </Card>
 
-          {/* Live Log Analysis Card with Generate Report Button on the Right */}
-          <Card
-            sx={{
-              flex: 1,
-              minWidth: "300px",
-              border: "2px solid #5D4037",
-              borderRadius: 3,
-              backgroundColor: "#fff",
-              boxShadow: 4,
-              p: 3,
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                mb: 2,
-              }}
-            >
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: "Roboto, sans-serif",
-                  color: "#5D4037",
-                  fontWeight: 600,
-                }}
-              >
-                Live Log Analysis
-              </Typography>
-              <Button
-                variant="contained"
-                onClick={() => {
-                  const blob = new Blob(
-                    [suspiciousLogs.map((log) => log.text).join("\n")],
-                    { type: "text/plain;charset=utf-8" }
-                  );
-                  const link = document.createElement("a");
-                  link.href = URL.createObjectURL(blob);
-                  link.download = "suspicious_logs_report.txt";
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                }}
-                sx={{
-                  height: "40px",
-                  fontSize: "0.9rem",
-                  fontFamily: "Roboto, sans-serif",
-                  fontWeight: 600,
-                  borderRadius: "8px",
-                  textTransform: "none",
-                  backgroundColor: "#5D4037",
-                  "&:hover": { backgroundColor: "#4E342E" },
-                }}
-              >
-                Generate Report
-              </Button>
-            </Box>
-            <Divider sx={{ mb: 2 }} />
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 1,
-                minHeight: "75px",
-                maxHeight: "75px",
-                justifyContent: "center",
-              }}
-            >
-              {liveLogs.length === 0 ? (
-                <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "Roboto, sans-serif" }}>
-                  No logs currently being analyzed.
-                </Typography>
-              ) : (
-                liveLogs.map((log) => (
-                  <Box
-                    key={log.id}
-                    sx={{
-                      backgroundColor: getLogColor(log.status),
-                      p: 1,
-                      borderRadius: 2,
-                      fontSize: "0.75rem",
-                      fontFamily: "monospace",
-                    }}
-                  >
-                    {log.text}
-                  </Box>
-                ))
-              )}
-            </Box>
-          </Card>
+          {/* ADDITIONAL CHARTS */}
+          <ProtocolAndAttackCharts logs={[...safeLogs, ...suspiciousLogs]} />
         </Box>
+      </>
+    );
+  }
 
-        {/* SAFE & SUSPICIOUS LOGS */}
-        <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", mb: 4 }}>
-          <Card
-            sx={{
-              flex: 1,
-              minWidth: "300px",
-              maxHeight: "300px",
-              minHeight: "300px",
-              overflow: "auto",
-              borderRadius: 3,
-              backgroundColor: "#e6ffe6",
-              boxShadow: 2,
-            }}
-          >
-            <CardContent>
-              <Typography
-                variant="h6"
-                sx={{
-                  color: "green",
-                  fontFamily: "Roboto, sans-serif",
-                  fontWeight: 600,
-                }}
-              >
-                Safe Logs
-              </Typography>
-              <Divider sx={{ my: 1 }} />
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                {safeLogs.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "Roboto, sans-serif" }}>
-                    No safe logs.
-                  </Typography>
-                ) : (
-                  safeLogs.map((log) => (
-                    <Typography key={log.id} sx={{ fontSize: "0.75rem", fontFamily: "monospace" }}>
-                      {log.text.slice(3)}
-                    </Typography>
-                  ))
-                )}
-              </Box>
-            </CardContent>
-          </Card>
-
-          <Card
-            sx={{
-              flex: 1,
-              minWidth: "300px",
-              maxHeight: "300px",
-              minHeight: "300px",
-              overflow: "auto",
-              borderRadius: 3,
-              backgroundColor: "#ffe6e6",
-              boxShadow: 2,
-            }}
-          >
-            <CardContent>
-              <Typography
-                variant="h6"
-                sx={{
-                  color: "red",
-                  fontFamily: "Roboto, sans-serif",
-                  fontWeight: 600,
-                }}
-              >
-                Suspicious Logs
-              </Typography>
-              <Divider sx={{ my: 1 }} />
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                {suspiciousLogs.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "Roboto, sans-serif" }}>
-                    No suspicious logs.
-                  </Typography>
-                ) : (
-                  suspiciousLogs.map((log) => (
-                    <Typography key={log.id} sx={{ fontSize: "0.75rem", fontFamily: "monospace" }}>
-                      {log.text.slice(3)}
-                    </Typography>
-                  ))
-                )}
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
-
-        {/* CHART */}
-        <Card
-          sx={{
-            width: "100%",
-            mt: 4,
-            p: 2,
-            borderRadius: 3,
-            backgroundColor: "#fff",
-            boxShadow: 4,
-          }}
-        >
-          <Typography
-            variant="h6"
-            sx={{
-              mb: 2,
-              fontFamily: "Roboto, sans-serif",
-              color: "#5D4037",
-              fontWeight: 600,
-            }}
-          >
-            Log Activity Over Time
-          </Typography>
-          <LogActivityChart data={chartData} />
-        </Card>
-
-        {/* ADDITIONAL CHARTS */}
-        <ProtocolAndAttackCharts logs={[...safeLogs, ...suspiciousLogs]} />
-      </Box>
-    </>
-  );
-}
-
-export default Home;
+  export default Home;
