@@ -1,4 +1,4 @@
-NetShield: Network Log Analysis and Classification
+# NetShield: Network Log Analysis and Classification
 
 NetShield is a network log analysis and classification system designed to process network logs, classify them as safe or suspicious, and visualize the results through interactive charts. The project includes a backend for processing logs, a frontend for visualization, and machine learning models for classification.
 
