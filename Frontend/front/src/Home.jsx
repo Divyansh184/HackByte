@@ -308,9 +308,6 @@ function Home() {
             </Typography>
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Button color="inherit" startIcon={<HistoryIcon />}>
-              Report History
-            </Button>
             <Button
               color="inherit"
               startIcon={<LogoutIcon />}
@@ -318,12 +315,6 @@ function Home() {
             >
               Logout
             </Button>
-            <Typography
-              variant="body1"
-              sx={{ fontFamily: "Roboto, sans-serif" }}
-            >
-              Hello, User
-            </Typography>
           </Box>
         </Toolbar>
       </AppBar>
